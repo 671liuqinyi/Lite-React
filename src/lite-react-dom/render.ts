@@ -18,6 +18,11 @@ function mount(vnode: LiteVNode): Node {
     return document.createTextNode(String(vnode.props.nodeValue ?? ""));
   }
 
+  if (typeof vnode.type === "function") {
+    // 函数组件本质上是“接收 props，返回 vnode”的普通函数。
+    return mount(vnode.type(vnode.props));
+  }
+
   const element = document.createElement(vnode.type);
 
   for (const [key, value] of Object.entries(vnode.props)) {

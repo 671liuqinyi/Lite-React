@@ -27,4 +27,23 @@ describe("render", () => {
 
     expect(container.innerHTML).toBe("<div>fresh</div>");
   });
+
+  it("renders a function component on first mount", () => {
+    const container = document.createElement("div");
+
+    function App(props: { title: string }) {
+      return createElement(
+        "section",
+        { id: "lite-root", className: "demo-card" },
+        createElement("h1", null, props.title),
+        createElement("p", null, "Function component mount"),
+      );
+    }
+
+    render(createElement(App, { title: "lite-react" }), container);
+
+    expect(container.innerHTML).toBe(
+      '<section id="lite-root" class="demo-card"><h1>lite-react</h1><p>Function component mount</p></section>',
+    );
+  });
 });

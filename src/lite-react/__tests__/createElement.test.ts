@@ -41,4 +41,20 @@ describe("createElement", () => {
 
     expect(vnode.props.children).toEqual([child]);
   });
+
+  it("keeps function components as vnode types without executing them", () => {
+    let called = false;
+
+    function App(props: { title: string }) {
+      called = true;
+
+      return createElement("section", null, props.title);
+    }
+
+    const vnode = createElement(App, { title: "lite-react" });
+
+    expect(vnode.type).toBe(App);
+    expect(vnode.props.title).toBe("lite-react");
+    expect(called).toBe(false);
+  });
 });
