@@ -31,14 +31,14 @@ function setProp(element: HTMLElement, key: string, value: unknown) {
   element.setAttribute(key, String(value));
 }
 
-function mount(vnode: LiteVNode): Node {
+function mount(vnode: LiteVNode, path: string): Node {
   if (vnode.type === TEXT_ELEMENT) {
     return document.createTextNode(String(vnode.props.nodeValue ?? ""));
   }
 
   if (typeof vnode.type === "function") {
-    // 函数组件本质上是“接收 props，返回 vnode”的普通函数。
-    return mount(runFunctionComponent(vnode.type, vnode.props));
+    // 这里用路径标识组件实例，让同一组件类型的多个实例也能各自拿回自己的 hooks 状态。
+    return mount(runFunctionComponent(path, vnode.type, vnode.props), `${path}.0`);
   }
 
   const element = document.createElement(vnode.type);
@@ -47,8 +47,8 @@ function mount(vnode: LiteVNode): Node {
     setProp(element, key, value);
   }
 
-  for (const child of vnode.props.children) {
-    element.appendChild(mount(child));
+  for (const [index, child] of vnode.props.children.entries()) {
+    element.appendChild(mount(child, `${path}.${index}`));
   }
 
   return element;
@@ -76,7 +76,7 @@ export function render(vnode: LiteVNode, container: HTMLElement) {
     render(currentRoot.vnode, currentRoot.container);
   });
 
-  // 每次根渲染开始前重置 hook 索引，确保 useState 按调用顺序读取正确槽位。
+  // 每次根渲染开始前重置 hooks 运行时上下文，但不清空同一个 root 的实例状态表。
   prepareToRenderRoot(currentRoot.id);
-  container.replaceChildren(mount(vnode));
+  container.replaceChildren(mount(vnode, "0"));
 }

@@ -13,16 +13,34 @@ type AppProps = {
   title: string;
 };
 
-const App: LiteFunctionComponent<AppProps> = ({ title }) => {
+const Panel: LiteFunctionComponent<{ title: string }> = ({
+  title,
+  children,
+}) => {
+  return (
+    <section className="demo-card">
+      <h1>{title}</h1>
+      <div className="demo-row">{children ?? []}</div>
+    </section>
+  );
+};
+
+const Counter: LiteFunctionComponent<{ label: string }> = ({ label }) => {
   const [count, setCount] = useState(0);
 
   return (
-    <section id="lite-root" className="demo-card">
-      <h1>{title}</h1>
-      <p>{"Event binding + root rerender + useState"}</p>
-      <button onClick={() => setCount((value) => value + 1)}>
-        {`Count is ${count}`}
-      </button>
+    <button onClick={() => setCount((value) => value + 1)}>{`${label}:${count}`}</button>
+  );
+};
+
+const App: LiteFunctionComponent<AppProps> = ({ title }) => {
+  return (
+    <section id="lite-root">
+      <p>{"props.children + nested components + isolated state"}</p>
+      <Panel title={title}>
+        <Counter label="A" />
+        <Counter label="B" />
+      </Panel>
     </section>
   );
 };

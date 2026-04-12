@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { createElement, useState } from "../../lite-react";
+import {
+  createElement,
+  type LiteFunctionComponent,
+  useState,
+} from "../../lite-react";
 import { render } from "../index";
 
 describe("render", () => {
@@ -115,5 +119,99 @@ describe("render", () => {
     button.click();
 
     expect(container.innerHTML).toBe("<button>Count is 1</button>");
+  });
+
+  it("passes JSX children into function component props", () => {
+    const container = document.createElement("div");
+
+    const Panel: LiteFunctionComponent<{ title: string }> = ({
+      title,
+      children,
+    }) => {
+      return createElement(
+        "section",
+        { className: "panel" },
+        createElement("h2", null, title),
+        children ?? [],
+      );
+    };
+
+    render(
+      createElement(
+        Panel,
+        { title: "Counters" },
+        createElement("span", null, "inside child"),
+      ),
+      container,
+    );
+
+    expect(container.innerHTML).toBe(
+      '<section class="panel"><h2>Counters</h2><span>inside child</span></section>',
+    );
+  });
+
+  it("renders components nested inside other components", () => {
+    const container = document.createElement("div");
+
+    const Label: LiteFunctionComponent<{ text: string }> = ({ text }) => {
+      return createElement("span", null, text);
+    };
+
+    const Layout: LiteFunctionComponent = ({ children }) => {
+      return createElement("div", { className: "layout" }, children ?? []);
+    };
+
+    const App: LiteFunctionComponent = () => {
+      return createElement(
+        Layout,
+        null,
+        createElement(Label, { text: "nested component" }),
+      );
+    };
+
+    render(createElement(App, null), container);
+
+    expect(container.innerHTML).toBe(
+      '<div class="layout"><span>nested component</span></div>',
+    );
+  });
+
+  it("keeps state isolated between two instances of the same component type", () => {
+    const container = document.createElement("div");
+
+    const Counter: LiteFunctionComponent<{ label: string }> = ({ label }) => {
+      const [count, setCount] = useState(0);
+
+      return createElement(
+        "button",
+        {
+          onClick: () => setCount((value) => value + 1),
+        },
+        `${label}:${count}`,
+      );
+    };
+
+    const App: LiteFunctionComponent = () => {
+      return createElement(
+        "section",
+        null,
+        createElement(Counter, { label: "A" }),
+        createElement(Counter, { label: "B" }),
+      );
+    };
+
+    render(createElement(App, null), container);
+
+    const buttons = container.querySelectorAll("button");
+
+    if (buttons.length !== 2) {
+      throw new Error("Expected two button elements");
+    }
+
+    buttons[0]?.click();
+
+    expect(container.innerHTML).toBe(
+      "<section><button>A:1</button><button>B:0</button></section>",
+    );
   });
 });

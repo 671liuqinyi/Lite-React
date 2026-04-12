@@ -4,10 +4,14 @@ export type LiteProps = Record<string, unknown> & {
   children: LiteVNode[];
 };
 
+export type LiteComponentProps = {
+  children?: LiteVNode[];
+};
+
 export type LiteFunctionComponent<
-  P extends Record<string, unknown> = Record<string, unknown>,
+  P extends Record<string, unknown> = Record<string, never>,
 > = {
-  bivarianceHack(props: P): LiteVNode;
+  bivarianceHack(props: P & LiteComponentProps): LiteVNode;
 }["bivarianceHack"];
 
 export type LiteElementType =

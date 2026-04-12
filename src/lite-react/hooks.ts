@@ -2,19 +2,20 @@ import type { LiteVNode } from "./types";
 
 type StateUpdater<T> = T | ((prevState: T) => T);
 
-let hookStates: unknown[] = [];
-let hookIndex = 0;
+let hookStateMap = new Map<string, unknown[]>();
+let currentInstanceId: string | null = null;
+let currentHookIndex = 0;
 let activeRootId: symbol | null = null;
 let scheduleRootRender: (() => void) | null = null;
-let isRenderingFunctionComponent = false;
 
 export function prepareToRenderRoot(rootId: symbol) {
   if (activeRootId !== rootId) {
     activeRootId = rootId;
-    hookStates = [];
+    hookStateMap = new Map();
   }
 
-  hookIndex = 0;
+  currentInstanceId = null;
+  currentHookIndex = 0;
 }
 
 export function registerRootRender(callback: () => void) {
@@ -22,35 +23,50 @@ export function registerRootRender(callback: () => void) {
 }
 
 export function runFunctionComponent<TProps>(
+  instanceId: string,
   component: (props: TProps) => LiteVNode,
   props: TProps,
 ) {
-  isRenderingFunctionComponent = true;
+  const previousInstanceId = currentInstanceId;
+  const previousHookIndex = currentHookIndex;
+
+  currentInstanceId = instanceId;
+  currentHookIndex = 0;
 
   try {
+    // 进入某个组件实例时，后续的 useState 都会落到该实例自己的状态数组上。
     return component(props);
   } finally {
-    isRenderingFunctionComponent = false;
+    currentInstanceId = previousInstanceId;
+    currentHookIndex = previousHookIndex;
   }
 }
 
 export function useState<T>(initialValue: T) {
-  if (!isRenderingFunctionComponent) {
+  if (!currentInstanceId) {
     throw new Error("useState can only be used inside a function component");
   }
 
-  const currentIndex = hookIndex;
+  let instanceStates = hookStateMap.get(currentInstanceId);
 
-  if (hookStates[currentIndex] === undefined) {
-    hookStates[currentIndex] = initialValue;
+  if (!instanceStates) {
+    instanceStates = [];
+    hookStateMap.set(currentInstanceId, instanceStates);
   }
 
-  const value = hookStates[currentIndex] as T;
+  const states = instanceStates;
+  const currentIndex = currentHookIndex;
+
+  if (states[currentIndex] === undefined) {
+    states[currentIndex] = initialValue;
+  }
+
+  const value = states[currentIndex] as T;
 
   function setState(nextState: StateUpdater<T>) {
-    const previousValue = hookStates[currentIndex] as T;
+    const previousValue = states[currentIndex] as T;
 
-    hookStates[currentIndex] =
+    states[currentIndex] =
       typeof nextState === "function"
         ? (nextState as (prevState: T) => T)(previousValue)
         : nextState;
@@ -62,8 +78,8 @@ export function useState<T>(initialValue: T) {
     scheduleRootRender();
   }
 
-  hookIndex += 1;
+  currentHookIndex += 1;
 
-  // 这里先用“数组槽位 + 调用顺序”保存状态，便于理解 useState 的最小原理。
+  // 每个组件实例都有自己的 hooks 数组，这里只在当前实例的槽位里读写状态。
   return [value, setState] as const;
 }
