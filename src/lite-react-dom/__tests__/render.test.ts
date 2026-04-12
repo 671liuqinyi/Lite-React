@@ -214,4 +214,94 @@ describe("render", () => {
       "<section><button>A:1</button><button>B:0</button></section>",
     );
   });
+
+  it("reuses the same host DOM node when rerendering the same type", () => {
+    const container = document.createElement("div");
+
+    render(
+      createElement("button", { className: "idle" }, "Count 0"),
+      container,
+    );
+
+    const firstButton = container.querySelector("button");
+
+    if (!firstButton) {
+      throw new Error("Expected a button element");
+    }
+
+    render(
+      createElement("button", { className: "active" }, "Count 1"),
+      container,
+    );
+
+    const secondButton = container.querySelector("button");
+
+    expect(secondButton).toBe(firstButton);
+    expect(secondButton?.className).toBe("active");
+    expect(secondButton?.textContent).toBe("Count 1");
+  });
+
+  it("keeps the same button DOM node during useState updates", () => {
+    const container = document.createElement("div");
+
+    const ToggleButton: LiteFunctionComponent = () => {
+      const [active, setActive] = useState(false);
+
+      return createElement(
+        "button",
+        {
+          className: active ? "active" : "idle",
+          onClick: () => setActive((value) => !value),
+        },
+        active ? "active" : "idle",
+      );
+    };
+
+    render(createElement(ToggleButton, null), container);
+
+    const firstButton = container.querySelector("button");
+
+    if (!firstButton) {
+      throw new Error("Expected a button element");
+    }
+
+    firstButton.click();
+
+    const secondButton = container.querySelector("button");
+
+    expect(secondButton).toBe(firstButton);
+    expect(secondButton?.className).toBe("active");
+    expect(secondButton?.textContent).toBe("active");
+  });
+
+  it("removes trailing children while keeping unaffected siblings", () => {
+    const container = document.createElement("div");
+
+    const App: LiteFunctionComponent<{ showExtra: boolean }> = ({
+      showExtra,
+    }) => {
+      return createElement(
+        "section",
+        null,
+        createElement("button", null, "keep"),
+        showExtra ? createElement("span", null, "extra") : null,
+      );
+    };
+
+    render(createElement(App, { showExtra: true }), container);
+
+    const firstButton = container.querySelector("button");
+
+    if (!firstButton) {
+      throw new Error("Expected a button element");
+    }
+
+    render(createElement(App, { showExtra: false }), container);
+
+    const secondButton = container.querySelector("button");
+
+    expect(secondButton).toBe(firstButton);
+    expect(container.querySelector("span")).toBeNull();
+    expect(container.innerHTML).toBe("<section><button>keep</button></section>");
+  });
 });

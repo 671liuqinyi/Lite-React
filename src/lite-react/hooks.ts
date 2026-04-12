@@ -1,75 +1,65 @@
+import type { LiteFiberNode, LiteHook, LiteStateAction } from "./fiber";
 import type { LiteVNode } from "./types";
 
 type StateUpdater<T> = T | ((prevState: T) => T);
 
-let hookStateMap = new Map<string, unknown[]>();
-let currentInstanceId: string | null = null;
+let currentFunctionFiber: LiteFiberNode | null = null;
 let currentHookIndex = 0;
-let activeRootId: symbol | null = null;
 let scheduleRootRender: (() => void) | null = null;
-
-export function prepareToRenderRoot(rootId: symbol) {
-  if (activeRootId !== rootId) {
-    activeRootId = rootId;
-    hookStateMap = new Map();
-  }
-
-  currentInstanceId = null;
-  currentHookIndex = 0;
-}
 
 export function registerRootRender(callback: () => void) {
   scheduleRootRender = callback;
 }
 
 export function runFunctionComponent<TProps>(
-  instanceId: string,
+  fiber: LiteFiberNode,
   component: (props: TProps) => LiteVNode,
   props: TProps,
 ) {
-  const previousInstanceId = currentInstanceId;
+  const previousFiber = currentFunctionFiber;
   const previousHookIndex = currentHookIndex;
 
-  currentInstanceId = instanceId;
+  currentFunctionFiber = fiber;
   currentHookIndex = 0;
+  fiber.hooks = [];
 
   try {
-    // 进入某个组件实例时，后续的 useState 都会落到该实例自己的状态数组上。
+    // 进入当前函数组件 Fiber 后，后续 hooks 都会写到这次工作树节点上。
     return component(props);
   } finally {
-    currentInstanceId = previousInstanceId;
+    currentFunctionFiber = previousFiber;
     currentHookIndex = previousHookIndex;
   }
 }
 
 export function useState<T>(initialValue: T) {
-  if (!currentInstanceId) {
+  if (!currentFunctionFiber) {
     throw new Error("useState can only be used inside a function component");
   }
 
-  let instanceStates = hookStateMap.get(currentInstanceId);
+  const oldHook = currentFunctionFiber.alternate?.hooks?.[
+    currentHookIndex
+  ] as LiteHook | undefined;
 
-  if (!instanceStates) {
-    instanceStates = [];
-    hookStateMap.set(currentInstanceId, instanceStates);
+  const hook: LiteHook = {
+    state: oldHook ? oldHook.state : initialValue,
+    queue: [],
+  };
+
+  for (const action of oldHook?.queue ?? []) {
+    hook.state = action(hook.state);
   }
 
-  const states = instanceStates;
-  const currentIndex = currentHookIndex;
-
-  if (states[currentIndex] === undefined) {
-    states[currentIndex] = initialValue;
-  }
-
-  const value = states[currentIndex] as T;
+  const currentFiber = currentFunctionFiber;
+  const value = hook.state as T;
 
   function setState(nextState: StateUpdater<T>) {
-    const previousValue = states[currentIndex] as T;
-
-    states[currentIndex] =
+    const action: LiteStateAction = (prevState) =>
       typeof nextState === "function"
-        ? (nextState as (prevState: T) => T)(previousValue)
+        ? (nextState as (prevState: T) => T)(prevState as T)
         : nextState;
+
+    hook.queue.push(action);
 
     if (!scheduleRootRender) {
       throw new Error("Cannot rerender before a root render is registered");
@@ -79,7 +69,8 @@ export function useState<T>(initialValue: T) {
   }
 
   currentHookIndex += 1;
+  currentFiber.hooks?.push(hook);
 
-  // 每个组件实例都有自己的 hooks 数组，这里只在当前实例的槽位里读写状态。
+  // 每一轮渲染都会在当前 Fiber 上重新生成 hooks，并从 alternate 读回旧状态。
   return [value, setState] as const;
 }

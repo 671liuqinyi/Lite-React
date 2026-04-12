@@ -29,17 +29,36 @@ const Counter: LiteFunctionComponent<{ label: string }> = ({ label }) => {
   const [count, setCount] = useState(0);
 
   return (
-    <button onClick={() => setCount((value) => value + 1)}>{`${label}:${count}`}</button>
+    <button
+      className={count > 0 ? "active" : "idle"}
+      onClick={() => setCount((value) => value + 1)}
+    >
+      {`${label}:${count}`}
+    </button>
+  );
+};
+
+const HintToggle: LiteFunctionComponent = () => {
+  const [visible, setVisible] = useState(true);
+
+  return (
+    <section className="demo-stack">
+      <button onClick={() => setVisible((value) => !value)}>
+        {visible ? "hide hint" : "show hint"}
+      </button>
+      {visible ? <p>{"Fiber diff can remove this node."}</p> : null}
+    </section>
   );
 };
 
 const App: LiteFunctionComponent<AppProps> = ({ title }) => {
   return (
     <section id="lite-root">
-      <p>{"props.children + nested components + isolated state"}</p>
+      <p>{"fiber + diff + reusable DOM nodes"}</p>
       <Panel title={title}>
         <Counter label="A" />
         <Counter label="B" />
+        <HintToggle />
       </Panel>
     </section>
   );
