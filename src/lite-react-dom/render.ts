@@ -1,4 +1,17 @@
 import { TEXT_ELEMENT, type LiteVNode } from "../lite-react";
+import {
+  prepareToRenderRoot,
+  registerRootRender,
+  runFunctionComponent,
+} from "../lite-react/hooks";
+
+type RootRecord = {
+  id: symbol;
+  container: HTMLElement;
+  vnode: LiteVNode;
+};
+
+let currentRoot: RootRecord | null = null;
 
 function setProp(element: HTMLElement, key: string, value: unknown) {
   if (key === "children") {
@@ -7,6 +20,11 @@ function setProp(element: HTMLElement, key: string, value: unknown) {
 
   if (key === "className") {
     element.setAttribute("class", String(value));
+    return;
+  }
+
+  if (key === "onClick" && typeof value === "function") {
+    element.addEventListener("click", value as EventListener);
     return;
   }
 
@@ -20,7 +38,7 @@ function mount(vnode: LiteVNode): Node {
 
   if (typeof vnode.type === "function") {
     // 函数组件本质上是“接收 props，返回 vnode”的普通函数。
-    return mount(vnode.type(vnode.props));
+    return mount(runFunctionComponent(vnode.type, vnode.props));
   }
 
   const element = document.createElement(vnode.type);
@@ -37,5 +55,28 @@ function mount(vnode: LiteVNode): Node {
 }
 
 export function render(vnode: LiteVNode, container: HTMLElement) {
+  if (!currentRoot || currentRoot.container !== container) {
+    currentRoot = {
+      id: Symbol("lite-root"),
+      container,
+      vnode,
+    };
+  } else {
+    currentRoot = {
+      ...currentRoot,
+      vnode,
+    };
+  }
+
+  registerRootRender(() => {
+    if (!currentRoot) {
+      throw new Error("Missing current root during rerender");
+    }
+
+    render(currentRoot.vnode, currentRoot.container);
+  });
+
+  // 每次根渲染开始前重置 hook 索引，确保 useState 按调用顺序读取正确槽位。
+  prepareToRenderRoot(currentRoot.id);
   container.replaceChildren(mount(vnode));
 }

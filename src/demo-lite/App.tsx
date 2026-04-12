@@ -1,6 +1,10 @@
 /** @jsxRuntime classic */
 /** @jsx createElement */
-import { createElement, type LiteFunctionComponent } from "../lite-react";
+import {
+  createElement,
+  type LiteFunctionComponent,
+  useState,
+} from "../lite-react";
 
 // The classic JSX pragma consumes this binding during TSX compilation.
 void createElement;
@@ -10,14 +14,15 @@ type AppProps = {
 };
 
 const App: LiteFunctionComponent<AppProps> = ({ title }) => {
+  const [count, setCount] = useState(0);
+
   return (
     <section id="lite-root" className="demo-card">
       <h1>{title}</h1>
-      <p>{"Function component mount"}</p>
-      <div className="demo-row">
-        <span>plain props</span>
-        <span>first mount only</span>
-      </div>
+      <p>{"Event binding + root rerender + useState"}</p>
+      <button onClick={() => setCount((value) => value + 1)}>
+        {`Count is ${count}`}
+      </button>
     </section>
   );
 };

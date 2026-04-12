@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createElement } from "../../lite-react";
+import { createElement, useState } from "../../lite-react";
 import { render } from "../index";
 
 describe("render", () => {
@@ -45,5 +45,75 @@ describe("render", () => {
     expect(container.innerHTML).toBe(
       '<section id="lite-root" class="demo-card"><h1>lite-react</h1><p>Function component mount</p></section>',
     );
+  });
+
+  it("binds onClick handlers to DOM elements", () => {
+    const container = document.createElement("div");
+    let clicked = 0;
+
+    render(
+      createElement(
+        "button",
+        {
+          onClick: () => {
+            clicked += 1;
+          },
+        },
+        "click me",
+      ),
+      container,
+    );
+
+    const button = container.querySelector("button");
+
+    if (!button) {
+      throw new Error("Expected a button element");
+    }
+
+    button.click();
+
+    expect(clicked).toBe(1);
+  });
+
+  it("renders the initial useState value inside a function component", () => {
+    const container = document.createElement("div");
+
+    function Counter() {
+      const [count] = useState(0);
+
+      return createElement("button", null, `Count is ${count}`);
+    }
+
+    render(createElement(Counter, null), container);
+
+    expect(container.innerHTML).toBe("<button>Count is 0</button>");
+  });
+
+  it("rerenders the root when setState is called from an onClick handler", () => {
+    const container = document.createElement("div");
+
+    function Counter() {
+      const [count, setCount] = useState(0);
+
+      return createElement(
+        "button",
+        {
+          onClick: () => setCount((value) => value + 1),
+        },
+        `Count is ${count}`,
+      );
+    }
+
+    render(createElement(Counter, null), container);
+
+    const button = container.querySelector("button");
+
+    if (!button) {
+      throw new Error("Expected a button element");
+    }
+
+    button.click();
+
+    expect(container.innerHTML).toBe("<button>Count is 1</button>");
   });
 });

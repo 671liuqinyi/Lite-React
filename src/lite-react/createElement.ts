@@ -53,4 +53,9 @@ export function createElement(
 }
 
 export { TEXT_ELEMENT } from "./types";
-export type { LiteChild, LiteFunctionComponent, LiteProps, LiteVNode } from "./types";
+export type {
+  LiteChild,
+  LiteFunctionComponent,
+  LiteProps,
+  LiteVNode,
+} from "./types";
