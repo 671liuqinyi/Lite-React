@@ -5,11 +5,17 @@ import {
 } from "../lite-react";
 import { ROOT_ELEMENT, type LiteFiberNode } from "../lite-react/fiber";
 import { registerRootRender, runFunctionComponent } from "../lite-react/hooks";
+import {
+  scheduleIdleWork,
+  shouldYield,
+  type LiteIdleDeadline,
+} from "./scheduler";
 
 let currentRoot: LiteFiberNode | null = null;
 let workInProgressRoot: LiteFiberNode | null = null;
 let nextUnitOfWork: LiteFiberNode | null = null;
 let deletions: LiteFiberNode[] = [];
+let isWorkLoopScheduled = false;
 
 function isEventProp(key: string) {
   return key.startsWith("on");
@@ -183,7 +189,7 @@ function reconcileChildren(
   let previousSibling: LiteFiberNode | null = null;
   let unkeyedIndex = 0;
 
-  // 优先按 key 找旧 Fiber，没 key 时再回退到顺序匹配。
+  // Prefer keyed matching first, then fall back to positional reuse.
   for (const [index, element] of elements.entries()) {
     let matchedOldFiber: LiteFiberNode | null =
       element.key !== null
@@ -329,7 +335,7 @@ function syncHostChildrenOrder(fiber: LiteFiberNode) {
 }
 
 function commitDeletion(fiber: LiteFiberNode, domParent: Node) {
-  // 函数组件本身没有 DOM，需要一路向下找到真正要删除的宿主节点。
+  // Function components have no host DOM, so keep walking downward.
   if (fiber.dom) {
     domParent.removeChild(fiber.dom);
     return;
@@ -359,7 +365,7 @@ function commitWork(fiber: LiteFiberNode | null) {
   commitWork(fiber.child);
 
   if (fiber.type === ROOT_ELEMENT || typeof fiber.type === "string") {
-    // 按新的 Fiber 链顺序重排直接子 DOM，让 keyed 列表真正落到页面顺序上。
+    // Re-append direct host children so keyed reorders reach the real DOM.
     syncHostChildrenOrder(fiber);
   }
 
@@ -378,14 +384,29 @@ function commitRoot() {
   deletions = [];
 }
 
-function workLoop() {
-  while (nextUnitOfWork) {
+function performWorkUntilDeadline(deadline: LiteIdleDeadline) {
+  isWorkLoopScheduled = false;
+
+  while (nextUnitOfWork && !shouldYield(deadline)) {
     nextUnitOfWork = performUnitOfWork(nextUnitOfWork);
   }
 
   if (workInProgressRoot) {
-    commitRoot();
+    if (!nextUnitOfWork) {
+      commitRoot();
+    } else {
+      ensureWorkLoopScheduled();
+    }
   }
+}
+
+function ensureWorkLoopScheduled() {
+  if (isWorkLoopScheduled) {
+    return;
+  }
+
+  isWorkLoopScheduled = true;
+  scheduleIdleWork(performWorkUntilDeadline);
 }
 
 export function render(vnode: LiteVNode, container: HTMLElement) {
@@ -423,5 +444,5 @@ export function render(vnode: LiteVNode, container: HTMLElement) {
     render(currentVNode, currentContainer);
   });
 
-  workLoop();
+  ensureWorkLoopScheduled();
 }

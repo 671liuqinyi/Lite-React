@@ -19,6 +19,11 @@ const keyedItems = [
   { id: "c", label: "C" },
 ];
 
+const largeItems = Array.from({ length: 120 }, (_, index) => ({
+  id: `item-${index}`,
+  label: `Item ${index}`,
+}));
+
 const Panel: LiteFunctionComponent<{ title: string }> = ({
   title,
   children,
@@ -62,12 +67,36 @@ const KeyedCounterList: LiteFunctionComponent = () => {
   );
 };
 
+const SliceDemo: LiteFunctionComponent = () => {
+  const [expanded, setExpanded] = useState(false);
+  const items = expanded ? largeItems : largeItems.slice(0, 6);
+
+  return (
+    <section className="demo-stack">
+      <button onClick={() => setExpanded((value) => !value)}>
+        {expanded ? "render small list" : "render large list"}
+      </button>
+      <p>
+        {
+          "In browsers with requestIdleCallback, this update can be processed in slices."
+        }
+      </p>
+      <ul>
+        {items.map((item) => (
+          <li key={item.id}>{item.label}</li>
+        ))}
+      </ul>
+    </section>
+  );
+};
+
 const App: LiteFunctionComponent<AppProps> = ({ title }) => {
   return (
     <section id="lite-root">
-      <p>{"key + list diff + state follows identity"}</p>
+      <p>{"scheduler + time slicing + resumable fiber work"}</p>
       <Panel title={title}>
         <KeyedCounterList />
+        <SliceDemo />
       </Panel>
     </section>
   );

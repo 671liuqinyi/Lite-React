@@ -1,10 +1,33 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   createElement,
   type LiteFunctionComponent,
   useState,
 } from "../../lite-react";
 import { render } from "../index";
+import {
+  setScheduleIdleWorkForTest,
+  type LiteIdleDeadline,
+  type LiteIdleWorkCallback,
+} from "../scheduler";
+
+function createDeadline(budget: number): LiteIdleDeadline {
+  let remaining = budget;
+
+  return {
+    didTimeout: false,
+    timeRemaining() {
+      const current = remaining;
+
+      remaining -= 1;
+      return current;
+    },
+  };
+}
+
+afterEach(() => {
+  setScheduleIdleWorkForTest(null);
+});
 
 describe("render", () => {
   it("renders nested native elements into a container", () => {
@@ -425,5 +448,84 @@ describe("render", () => {
       "B",
     ]);
     expect(thirdPassSpans[1]).toBe(originalB);
+  });
+
+  it("splits unfinished render work across multiple idle callbacks", () => {
+    const callbacks: LiteIdleWorkCallback[] = [];
+    const container = document.createElement("div");
+
+    setScheduleIdleWorkForTest((callback) => {
+      callbacks.push(callback);
+    });
+
+    render(
+      createElement(
+        "section",
+        null,
+        createElement("h1", null, "title"),
+        createElement("p", null, "first"),
+        createElement("p", null, "second"),
+      ),
+      container,
+    );
+
+    expect(container.innerHTML).toBe("");
+    expect(callbacks).toHaveLength(1);
+
+    callbacks.shift()?.(createDeadline(2));
+
+    expect(container.innerHTML).toBe("");
+    expect(callbacks).toHaveLength(1);
+
+    callbacks.shift()?.(createDeadline(50));
+
+    expect(container.innerHTML).toBe(
+      "<section><h1>title</h1><p>first</p><p>second</p></section>",
+    );
+  });
+
+  it("schedules state updates through idle callbacks when work is sliced", () => {
+    const callbacks: LiteIdleWorkCallback[] = [];
+    const container = document.createElement("div");
+
+    setScheduleIdleWorkForTest((callback) => {
+      callbacks.push(callback);
+    });
+
+    const Counter: LiteFunctionComponent = () => {
+      const [count, setCount] = useState(0);
+
+      return createElement(
+        "button",
+        {
+          onClick: () => setCount((value) => value + 1),
+        },
+        `Count is ${count}`,
+      );
+    };
+
+    render(createElement(Counter, null), container);
+
+    callbacks.shift()?.(createDeadline(20));
+
+    const button = container.querySelector("button");
+
+    if (!button) {
+      throw new Error("Expected a button element");
+    }
+
+    button.click();
+
+    expect(container.innerHTML).toBe("<button>Count is 0</button>");
+    expect(callbacks).toHaveLength(1);
+
+    callbacks.shift()?.(createDeadline(1));
+
+    expect(container.innerHTML).toBe("<button>Count is 0</button>");
+    expect(callbacks).toHaveLength(1);
+
+    callbacks.shift()?.(createDeadline(20));
+
+    expect(container.innerHTML).toBe("<button>Count is 1</button>");
   });
 });
