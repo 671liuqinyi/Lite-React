@@ -7,6 +7,7 @@ describe("createElement", () => {
 
     expect(vnode).toEqual({
       type: "div",
+      key: null,
       props: {
         id: "root",
         children: [],
@@ -20,6 +21,7 @@ describe("createElement", () => {
     expect(vnode.props.children).toEqual([
       {
         type: TEXT_ELEMENT,
+        key: null,
         props: {
           nodeValue: "hello",
           children: [],
@@ -27,6 +29,7 @@ describe("createElement", () => {
       },
       {
         type: TEXT_ELEMENT,
+        key: null,
         props: {
           nodeValue: "123",
           children: [],
@@ -56,5 +59,13 @@ describe("createElement", () => {
     expect(vnode.type).toBe(App);
     expect(vnode.props.title).toBe("lite-react");
     expect(called).toBe(false);
+  });
+
+  it("extracts key from props without forwarding it into vnode props", () => {
+    const vnode = createElement("li", { key: "item-a", title: "A" });
+
+    expect(vnode.key).toBe("item-a");
+    expect(vnode.props.title).toBe("A");
+    expect(vnode.props.key).toBeUndefined();
   });
 });

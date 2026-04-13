@@ -4,6 +4,7 @@ export type {
   LiteChild,
   LiteComponentProps,
   LiteFunctionComponent,
+  LiteKey,
   LiteProps,
   LiteVNode,
 } from "./types";

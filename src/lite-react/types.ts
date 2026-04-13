@@ -1,11 +1,13 @@
 export const TEXT_ELEMENT = "TEXT_ELEMENT";
 
+export type LiteKey = string | number;
+
 export type LiteProps = Record<string, unknown> & {
   children: LiteVNode[];
 };
 
 export type LiteComponentProps = {
-  children?: LiteVNode[];
+  children?: LiteVNode | LiteVNode[];
 };
 
 export type LiteFunctionComponent<
@@ -21,6 +23,7 @@ export type LiteElementType =
 
 export interface LiteVNode {
   type: LiteElementType;
+  key: LiteKey | null;
   props: LiteProps & {
     nodeValue?: string;
   };

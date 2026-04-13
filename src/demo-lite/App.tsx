@@ -13,6 +13,12 @@ type AppProps = {
   title: string;
 };
 
+const keyedItems = [
+  { id: "a", label: "A" },
+  { id: "b", label: "B" },
+  { id: "c", label: "C" },
+];
+
 const Panel: LiteFunctionComponent<{ title: string }> = ({
   title,
   children,
@@ -38,15 +44,20 @@ const Counter: LiteFunctionComponent<{ label: string }> = ({ label }) => {
   );
 };
 
-const HintToggle: LiteFunctionComponent = () => {
-  const [visible, setVisible] = useState(true);
+const KeyedCounterList: LiteFunctionComponent = () => {
+  const [reversed, setReversed] = useState(false);
+  const items = reversed ? [...keyedItems].reverse() : keyedItems;
 
   return (
     <section className="demo-stack">
-      <button onClick={() => setVisible((value) => !value)}>
-        {visible ? "hide hint" : "show hint"}
+      <button onClick={() => setReversed((value) => !value)}>
+        {reversed ? "restore order" : "reverse order"}
       </button>
-      {visible ? <p>{"Fiber diff can remove this node."}</p> : null}
+      <div className="demo-row">
+        {items.map((item) => (
+          <Counter key={item.id} label={item.label} />
+        ))}
+      </div>
     </section>
   );
 };
@@ -54,11 +65,9 @@ const HintToggle: LiteFunctionComponent = () => {
 const App: LiteFunctionComponent<AppProps> = ({ title }) => {
   return (
     <section id="lite-root">
-      <p>{"fiber + diff + reusable DOM nodes"}</p>
+      <p>{"key + list diff + state follows identity"}</p>
       <Panel title={title}>
-        <Counter label="A" />
-        <Counter label="B" />
-        <HintToggle />
+        <KeyedCounterList />
       </Panel>
     </section>
   );

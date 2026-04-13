@@ -304,4 +304,126 @@ describe("render", () => {
     expect(container.querySelector("span")).toBeNull();
     expect(container.innerHTML).toBe("<section><button>keep</button></section>");
   });
+
+  it("does not forward key onto host DOM attributes", () => {
+    const container = document.createElement("div");
+
+    render(
+      createElement("button", { key: "cta", id: "demo" }, "click"),
+      container,
+    );
+
+    const button = container.querySelector("button");
+
+    if (!button) {
+      throw new Error("Expected a button element");
+    }
+
+    expect(button.getAttribute("key")).toBeNull();
+  });
+
+  it("preserves keyed component state when a list is reordered", () => {
+    const container = document.createElement("div");
+
+    const Counter: LiteFunctionComponent<{ label: string }> = ({ label }) => {
+      const [count, setCount] = useState(0);
+
+      return createElement(
+        "button",
+        {
+          onClick: () => setCount((value) => value + 1),
+        },
+        `${label}:${count}`,
+      );
+    };
+
+    const List: LiteFunctionComponent<{
+      items: Array<{ id: string; label: string }>;
+    }> = ({ items }) => {
+      return createElement(
+        "section",
+        null,
+        items.map((item) =>
+          createElement(Counter, {
+            key: item.id,
+            label: item.label,
+          }),
+        ),
+      );
+    };
+
+    render(
+      createElement(List, {
+        items: [
+          { id: "a", label: "A" },
+          { id: "b", label: "B" },
+        ],
+      }),
+      container,
+    );
+
+    const firstRenderButtons = container.querySelectorAll("button");
+    const firstAButton = firstRenderButtons[0];
+
+    if (!firstAButton) {
+      throw new Error("Expected the first counter button");
+    }
+
+    firstAButton.click();
+
+    render(
+      createElement(List, {
+        items: [
+          { id: "b", label: "B" },
+          { id: "a", label: "A" },
+        ],
+      }),
+      container,
+    );
+
+    const secondRenderButtons = container.querySelectorAll("button");
+
+    expect(secondRenderButtons[0]?.textContent).toBe("B:0");
+    expect(secondRenderButtons[1]?.textContent).toBe("A:1");
+    expect(secondRenderButtons[1]).toBe(firstAButton);
+  });
+
+  it("reuses keyed host siblings across insertions and deletions", () => {
+    const container = document.createElement("div");
+
+    function renderList(items: string[]) {
+      render(
+        createElement(
+          "section",
+          null,
+          items.map((item) => createElement("span", { key: item }, item)),
+        ),
+        container,
+      );
+    }
+
+    renderList(["A", "B"]);
+
+    const firstPassSpans = container.querySelectorAll("span");
+    const originalB = firstPassSpans[1];
+
+    renderList(["X", "A", "B"]);
+
+    const secondPassSpans = container.querySelectorAll("span");
+
+    expect(Array.from(secondPassSpans).map((node) => node.textContent)).toEqual(
+      ["X", "A", "B"],
+    );
+    expect(secondPassSpans[2]).toBe(originalB);
+
+    renderList(["X", "B"]);
+
+    const thirdPassSpans = container.querySelectorAll("span");
+
+    expect(Array.from(thirdPassSpans).map((node) => node.textContent)).toEqual([
+      "X",
+      "B",
+    ]);
+    expect(thirdPassSpans[1]).toBe(originalB);
+  });
 });

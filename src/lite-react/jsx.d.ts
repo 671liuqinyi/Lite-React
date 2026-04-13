@@ -1,6 +1,10 @@
 declare namespace JSX {
   type Element = import("./types").LiteVNode;
 
+  interface IntrinsicAttributes {
+    key?: import("./types").LiteKey;
+  }
+
   interface ElementChildrenAttribute {
     children: unknown;
   }

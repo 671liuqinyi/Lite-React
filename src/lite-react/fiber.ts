@@ -1,4 +1,4 @@
-import type { LiteElementType, LiteProps } from "./types";
+import type { LiteElementType, LiteKey, LiteProps } from "./types";
 
 export const ROOT_ELEMENT = "ROOT";
 
@@ -13,6 +13,7 @@ export type LiteHook = {
 
 export interface LiteFiberNode {
   type: LiteElementType | typeof ROOT_ELEMENT;
+  key: LiteKey | null;
   props: LiteProps;
   dom: Node | null;
   parent: LiteFiberNode | null;
