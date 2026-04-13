@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   createElement,
   type LiteFunctionComponent,
+  useEffect,
+  useRef,
   useState,
 } from "../../lite-react";
 import { render } from "../index";
@@ -527,5 +529,178 @@ describe("render", () => {
     callbacks.shift()?.(createDeadline(20));
 
     expect(container.innerHTML).toBe("<button>Count is 1</button>");
+  });
+
+  it("runs useEffect only after the DOM commit finishes", () => {
+    const container = document.createElement("div");
+    const snapshots: string[] = [];
+
+    const App: LiteFunctionComponent = () => {
+      useEffect(() => {
+        snapshots.push(container.innerHTML);
+      }, []);
+
+      return createElement("section", null, "effect");
+    };
+
+    render(createElement(App, null), container);
+
+    expect(container.innerHTML).toBe("<section>effect</section>");
+    expect(snapshots).toEqual(["<section>effect</section>"]);
+  });
+
+  it("reruns useEffect only when deps change and calls cleanup first", () => {
+    const container = document.createElement("div");
+    const events: string[] = [];
+
+    const App: LiteFunctionComponent<{ value: number }> = ({ value }) => {
+      useEffect(() => {
+        events.push(`effect:${value}`);
+
+        return () => {
+          events.push(`cleanup:${value}`);
+        };
+      }, [value]);
+
+      return createElement("span", null, String(value));
+    };
+
+    render(createElement(App, { value: 1 }), container);
+    render(createElement(App, { value: 1 }), container);
+    render(createElement(App, { value: 2 }), container);
+
+    expect(events).toEqual(["effect:1", "cleanup:1", "effect:2"]);
+  });
+
+  it("runs useEffect cleanup when a component is unmounted", () => {
+    const container = document.createElement("div");
+    const events: string[] = [];
+
+    const App: LiteFunctionComponent = () => {
+      useEffect(() => {
+        events.push("mount");
+
+        return () => {
+          events.push("cleanup");
+        };
+      }, []);
+
+      return createElement("section", null, "demo");
+    };
+
+    render(createElement(App, null), container);
+    render(createElement("div", null, "gone"), container);
+
+    expect(events).toEqual(["mount", "cleanup"]);
+  });
+
+  it("keeps the same ref object across rerenders", () => {
+    const container = document.createElement("div");
+    const seenRefs: Array<{ current: number }> = [];
+
+    /* eslint-disable react-hooks/refs */
+    const App: LiteFunctionComponent = () => {
+      const [count, setCount] = useState(0);
+      const valueRef = useRef(0);
+
+      useEffect(() => {
+        seenRefs.push(valueRef);
+      }, [count]);
+
+      return createElement(
+        "button",
+        {
+          onClick: () => {
+            valueRef.current += 1;
+            setCount(valueRef.current);
+          },
+        },
+        `count:${count}`,
+      );
+    };
+    /* eslint-enable react-hooks/refs */
+
+    render(createElement(App, null), container);
+
+    const button = container.querySelector("button");
+
+    if (!button) {
+      throw new Error("Expected a button element");
+    }
+
+    button.click();
+
+    expect(container.innerHTML).toBe("<button>count:1</button>");
+    expect(seenRefs).toHaveLength(2);
+    expect(seenRefs[1]).toBe(seenRefs[0]);
+    expect(seenRefs[1]?.current).toBe(1);
+  });
+
+  it("does not rerender when ref.current changes by itself", () => {
+    const container = document.createElement("div");
+
+    /* eslint-disable react-hooks/refs */
+    const App: LiteFunctionComponent = () => {
+      const clickCountRef = useRef(0);
+
+      return createElement(
+        "button",
+        {
+          onClick: () => {
+            clickCountRef.current += 1;
+          },
+        },
+        "stable",
+      );
+    };
+    /* eslint-enable react-hooks/refs */
+
+    render(createElement(App, null), container);
+
+    const button = container.querySelector("button");
+
+    if (!button) {
+      throw new Error("Expected a button element");
+    }
+
+    button.click();
+
+    expect(container.innerHTML).toBe("<button>stable</button>");
+  });
+
+  it("waits until the final commit before running useEffect in sliced work", () => {
+    const callbacks: LiteIdleWorkCallback[] = [];
+    const container = document.createElement("div");
+    const effects: string[] = [];
+
+    setScheduleIdleWorkForTest((callback) => {
+      callbacks.push(callback);
+    });
+
+    const App: LiteFunctionComponent = () => {
+      useEffect(() => {
+        effects.push(container.innerHTML);
+      }, []);
+
+      return createElement(
+        "section",
+        null,
+        createElement("h1", null, "title"),
+        createElement("p", null, "body"),
+      );
+    };
+
+    render(createElement(App, null), container);
+
+    callbacks.shift()?.(createDeadline(2));
+
+    expect(container.innerHTML).toBe("");
+    expect(effects).toEqual([]);
+
+    callbacks.shift()?.(createDeadline(50));
+
+    expect(effects).toEqual([
+      "<section><h1>title</h1><p>body</p></section>",
+    ]);
   });
 });

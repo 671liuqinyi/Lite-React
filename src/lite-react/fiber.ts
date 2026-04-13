@@ -1,4 +1,12 @@
-import type { LiteElementType, LiteKey, LiteProps } from "./types";
+import type {
+  LiteEffectCallback,
+  LiteEffectCleanup,
+  LiteEffectDeps,
+  LiteElementType,
+  LiteKey,
+  LiteProps,
+  LiteRefObject,
+} from "./types";
 
 export const ROOT_ELEMENT = "ROOT";
 
@@ -6,10 +14,26 @@ export type LiteEffectTag = "PLACEMENT" | "UPDATE" | "DELETION";
 
 export type LiteStateAction = (prevState: unknown) => unknown;
 
-export type LiteHook = {
+export type LiteStateHook = {
+  kind: "STATE";
   state: unknown;
   queue: LiteStateAction[];
 };
+
+export type LiteEffectHook = {
+  kind: "EFFECT";
+  deps: LiteEffectDeps;
+  effect: LiteEffectCallback;
+  cleanup?: LiteEffectCleanup;
+  shouldRun: boolean;
+};
+
+export type LiteRefHook = {
+  kind: "REF";
+  ref: LiteRefObject<unknown>;
+};
+
+export type LiteHook = LiteStateHook | LiteEffectHook | LiteRefHook;
 
 export interface LiteFiberNode {
   type: LiteElementType | typeof ROOT_ELEMENT;

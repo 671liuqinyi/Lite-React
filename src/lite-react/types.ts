@@ -1,6 +1,13 @@
 export const TEXT_ELEMENT = "TEXT_ELEMENT";
 
 export type LiteKey = string | number;
+export type LiteEffectCleanup = void | (() => void);
+export type LiteEffectCallback = () => LiteEffectCleanup;
+export type LiteEffectDeps = readonly unknown[] | undefined;
+
+export type LiteRefObject<T> = {
+  current: T;
+};
 
 export type LiteProps = Record<string, unknown> & {
   children: LiteVNode[];

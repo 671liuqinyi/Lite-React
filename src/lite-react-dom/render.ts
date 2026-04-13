@@ -4,7 +4,12 @@ import {
   type LiteVNode,
 } from "../lite-react";
 import { ROOT_ELEMENT, type LiteFiberNode } from "../lite-react/fiber";
-import { registerRootRender, runFunctionComponent } from "../lite-react/hooks";
+import {
+  cleanupFiberEffects,
+  flushPassiveEffects,
+  registerRootRender,
+  runFunctionComponent,
+} from "../lite-react/hooks";
 import {
   scheduleIdleWork,
   shouldYield,
@@ -335,7 +340,10 @@ function syncHostChildrenOrder(fiber: LiteFiberNode) {
 }
 
 function commitDeletion(fiber: LiteFiberNode, domParent: Node) {
-  // Function components have no host DOM, so keep walking downward.
+  // 组件卸载时要先递归执行 cleanup，再删除对应宿主节点。
+  cleanupFiberEffects(fiber);
+
+  // 函数组件本身没有 DOM，需要一路向下找到真正的宿主节点。
   if (fiber.dom) {
     domParent.removeChild(fiber.dom);
     return;
@@ -382,6 +390,9 @@ function commitRoot() {
   workInProgressRoot = null;
   nextUnitOfWork = null;
   deletions = [];
+
+  // useEffect 只在 commit 完成后执行，保证副作用读到的是新 DOM。
+  flushPassiveEffects(currentRoot);
 }
 
 function performWorkUntilDeadline(deadline: LiteIdleDeadline) {

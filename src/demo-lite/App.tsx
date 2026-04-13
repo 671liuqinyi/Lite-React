@@ -3,6 +3,8 @@
 import {
   createElement,
   type LiteFunctionComponent,
+  useEffect,
+  useRef,
   useState,
 } from "../lite-react";
 
@@ -90,6 +92,39 @@ const SliceDemo: LiteFunctionComponent = () => {
   );
 };
 
+/* eslint-disable react-hooks/refs */
+const EffectRefDemo: LiteFunctionComponent = () => {
+  const [count, setCount] = useState(0);
+  const previousCountRef = useRef<number | null>(null);
+  const cleanupCountRef = useRef(0);
+
+  useEffect(() => {
+    previousCountRef.current = count;
+
+    // useEffect 的 cleanup 会在下一次依赖变更前执行。
+    return () => {
+      cleanupCountRef.current += 1;
+    };
+  }, [count]);
+
+  return (
+    <section className="demo-stack">
+      {/* 教学示例里故意渲染 ref 快照，方便观察 effect/ref 的“晚一拍”行为。 */}
+      <p>
+        {
+          "useEffect writes refs after commit, so these values appear one render later on purpose."
+        }
+      </p>
+      <button onClick={() => setCount((value) => value + 1)}>
+        {`count: ${count}`}
+      </button>
+      <p>{`previous count from ref: ${previousCountRef.current ?? "none"}`}</p>
+      <p>{`cleanup count from ref: ${cleanupCountRef.current}`}</p>
+    </section>
+  );
+};
+/* eslint-enable react-hooks/refs */
+
 const App: LiteFunctionComponent<AppProps> = ({ title }) => {
   return (
     <section id="lite-root">
@@ -97,6 +132,7 @@ const App: LiteFunctionComponent<AppProps> = ({ title }) => {
       <Panel title={title}>
         <KeyedCounterList />
         <SliceDemo />
+        <EffectRefDemo />
       </Panel>
     </section>
   );
