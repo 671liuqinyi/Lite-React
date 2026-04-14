@@ -13,7 +13,7 @@
 
 ## 项目展示
 
-在线展示地址：https://lite-react-drof2jdrb-671liuqinyis-projects.vercel.app/
+在线展示地址：https://lite-react.vercel.app/
 
 ## 项目目标
 
