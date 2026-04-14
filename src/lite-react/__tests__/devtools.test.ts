@@ -48,17 +48,21 @@ describe("lite-react devtools hook", () => {
         sibling: null,
         alternate: null,
         effectTag: "UPDATE",
-        hooks: [
-          {
-            kind: "STATE",
-            state: 1,
-            queue: [],
+        memoizedState: {
+          kind: "STATE",
+          state: 1,
+          queue: [],
+          next: {
+            kind: "REF",
+            ref: { current: "child-ref" },
+            next: null,
           },
-        ],
+        },
       },
       sibling: null,
       alternate: null,
-    };
+      memoizedState: null,
+    } as unknown as LiteFiberNode;
 
     if (!root.child) {
       throw new Error("Expected a child fiber");
@@ -70,7 +74,9 @@ describe("lite-react devtools hook", () => {
 
     expect(snapshot?.type).toBe("ROOT");
     expect(snapshot?.children[0]?.type).toBe("section");
-    expect(snapshot?.children[0]?.hooks).toEqual(["STATE"]);
+    expect(snapshot?.children[0]?.hooks).toEqual(["STATE", "REF"]);
+    expect(snapshot?.children[0]?.hookCount).toBe(2);
+    expect(snapshot?.children[0]?.hookChain).toBe("STATE -> REF");
     expect(snapshot?.children[0]?.effectTag).toBe("UPDATE");
   });
 });

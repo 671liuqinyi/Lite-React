@@ -7,6 +7,8 @@ export type LiteFiberSnapshot = {
   key: string | number | null;
   effectTag: string | null;
   hooks: string[];
+  hookCount: number;
+  hookChain: string;
   children: LiteFiberSnapshot[];
 };
 
@@ -40,8 +42,20 @@ function getGlobalHost() {
   return globalThis as GlobalWithLiteDevtools;
 }
 
-function getHookKinds(hooks: LiteHook[] | undefined) {
-  return (hooks ?? []).map((hook) => hook.kind);
+function getHookSummary(hook: LiteHook | null) {
+  const hooks: string[] = [];
+  let current = hook;
+
+  while (current) {
+    hooks.push(current.kind);
+    current = current.next;
+  }
+
+  return {
+    hooks,
+    hookCount: hooks.length,
+    hookChain: hooks.join(" -> "),
+  };
 }
 
 function getFiberTypeLabel(fiber: LiteFiberNode) {
@@ -143,13 +157,17 @@ export function serializeFiberTree(
     return null;
   }
 
-  // Fiber 快照要切断 parent / sibling / DOM 引用，只保留可视化需要的信息。
+  const hookSummary = getHookSummary(fiber.memoizedState);
+
+  // Fiber 快照要切断 parent / sibling / DOM 引用，只保留 devtools 可视化需要的摘要信息。
   return {
     id: path.replace(/[^a-zA-Z0-9_.-]/g, "-"),
     type: getFiberTypeLabel(fiber),
     key: fiber.key,
     effectTag: fiber.effectTag ?? null,
-    hooks: getHookKinds(fiber.hooks),
+    hooks: hookSummary.hooks,
+    hookCount: hookSummary.hookCount,
+    hookChain: hookSummary.hookChain,
     children: collectSnapshotChildren(fiber.child, path),
   };
 }

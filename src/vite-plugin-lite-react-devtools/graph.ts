@@ -17,6 +17,8 @@ function formatFiberLabel(snapshot: LiteFiberSnapshot) {
 
   if (snapshot.hooks.length > 0) {
     lines.push(`hooks: ${snapshot.hooks.join(", ")}`);
+    lines.push(`hookCount: ${snapshot.hookCount}`);
+    lines.push(`hookChain: ${snapshot.hookChain}`);
   }
 
   return escapeMermaidLabel(lines.join("\n"));

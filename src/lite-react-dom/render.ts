@@ -159,6 +159,7 @@ function createFiberFromElement(
     sibling: null,
     alternate: effectTag === "UPDATE" ? oldFiber : null,
     effectTag,
+    memoizedState: null,
   };
 }
 
@@ -461,6 +462,7 @@ export function render(vnode: LiteVNode, container: HTMLElement) {
     child: null,
     sibling: null,
     alternate: alternateRoot,
+    memoizedState: null,
   };
 
   deletions = [];

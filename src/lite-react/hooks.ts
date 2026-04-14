@@ -16,18 +16,21 @@ import type {
 type StateUpdater<T> = T | ((prevState: T) => T);
 
 let currentFunctionFiber: LiteFiberNode | null = null;
-let currentHookIndex = 0;
+let currentHookCursor: LiteHook | null = null;
+let workInProgressHookTail: LiteHook | null = null;
 let scheduleRootRender: (() => void) | null = null;
 
-function isStateHook(hook: LiteHook | undefined): hook is LiteStateHook {
+function isStateHook(hook: LiteHook | undefined | null): hook is LiteStateHook {
   return hook?.kind === "STATE";
 }
 
-function isEffectHook(hook: LiteHook | undefined): hook is LiteEffectHook {
+function isEffectHook(
+  hook: LiteHook | undefined | null,
+): hook is LiteEffectHook {
   return hook?.kind === "EFFECT";
 }
 
-function isRefHook(hook: LiteHook | undefined): hook is LiteRefHook {
+function isRefHook(hook: LiteHook | undefined | null): hook is LiteRefHook {
   return hook?.kind === "REF";
 }
 
@@ -39,13 +42,26 @@ function getCurrentFunctionFiber(hookName: string) {
   return currentFunctionFiber;
 }
 
-function getOldHook(fiber: LiteFiberNode) {
-  return fiber.alternate?.hooks?.[currentHookIndex];
+function consumeOldHook() {
+  const hook = currentHookCursor;
+
+  if (currentHookCursor) {
+    currentHookCursor = currentHookCursor.next;
+  }
+
+  return hook;
 }
 
-function pushHook(fiber: LiteFiberNode, hook: LiteHook) {
-  currentHookIndex += 1;
-  fiber.hooks?.push(hook);
+function appendHookNode(fiber: LiteFiberNode, hook: LiteHook) {
+  hook.next = null;
+
+  if (!fiber.memoizedState) {
+    fiber.memoizedState = hook;
+  } else if (workInProgressHookTail) {
+    workInProgressHookTail.next = hook;
+  }
+
+  workInProgressHookTail = hook;
 }
 
 function areHookInputsEqual(
@@ -83,6 +99,18 @@ function visitFiberSubtree(
   }
 }
 
+function visitHookList(
+  hook: LiteHook | null,
+  visitor: (node: LiteHook) => void,
+) {
+  let current = hook;
+
+  while (current) {
+    visitor(current);
+    current = current.next;
+  }
+}
+
 export function registerRootRender(callback: () => void) {
   scheduleRootRender = callback;
 }
@@ -93,24 +121,27 @@ export function runFunctionComponent<TProps>(
   props: TProps,
 ) {
   const previousFiber = currentFunctionFiber;
-  const previousHookIndex = currentHookIndex;
+  const previousHookCursor = currentHookCursor;
+  const previousHookTail = workInProgressHookTail;
 
   currentFunctionFiber = fiber;
-  currentHookIndex = 0;
-  fiber.hooks = [];
+  currentHookCursor = fiber.alternate?.memoizedState ?? null;
+  workInProgressHookTail = null;
+  fiber.memoizedState = null;
 
   try {
-    // 进入当前函数组件 Fiber 后，后续 hooks 都会写到这次工作树节点上。
+    // 这里让当前函数组件按“旧链表游标 -> 新链表尾指针”的方式重建 hook。
     return component(props);
   } finally {
     currentFunctionFiber = previousFiber;
-    currentHookIndex = previousHookIndex;
+    currentHookCursor = previousHookCursor;
+    workInProgressHookTail = previousHookTail;
   }
 }
 
 export function useState<T>(initialValue: T) {
   const fiber = getCurrentFunctionFiber("useState");
-  const oldHook = getOldHook(fiber);
+  const oldHook = consumeOldHook();
 
   if (oldHook && !isStateHook(oldHook)) {
     throw new Error("Hook order mismatch: expected a state hook");
@@ -120,13 +151,13 @@ export function useState<T>(initialValue: T) {
     kind: "STATE",
     state: oldHook ? oldHook.state : initialValue,
     queue: [],
+    next: null,
   };
 
   for (const action of oldHook?.queue ?? []) {
     hook.state = action(hook.state);
   }
 
-  const currentFiber = fiber;
   const value = hook.state as T;
 
   function setState(nextState: StateUpdater<T>) {
@@ -144,15 +175,15 @@ export function useState<T>(initialValue: T) {
     scheduleRootRender();
   }
 
-  pushHook(currentFiber, hook);
+  appendHookNode(fiber, hook);
 
-  // 每一轮渲染都会重新创建 hook 记录，并从 alternate 读回旧状态队列。
+  // 每轮渲染都会基于 alternate 上的旧节点，串出一条新的 hook 链表。
   return [value, setState] as const;
 }
 
 export function useRef<T>(initialValue: T): LiteRefObject<T> {
   const fiber = getCurrentFunctionFiber("useRef");
-  const oldHook = getOldHook(fiber);
+  const oldHook = consumeOldHook();
 
   if (oldHook && !isRefHook(oldHook)) {
     throw new Error("Hook order mismatch: expected a ref hook");
@@ -165,15 +196,16 @@ export function useRef<T>(initialValue: T): LiteRefObject<T> {
   const hook: LiteRefHook = {
     kind: "REF",
     ref: refObject as LiteRefObject<unknown>,
+    next: null,
   };
 
-  pushHook(fiber, hook);
+  appendHookNode(fiber, hook);
   return refObject;
 }
 
 export function useEffect(effect: LiteEffectCallback, deps?: readonly unknown[]) {
   const fiber = getCurrentFunctionFiber("useEffect");
-  const oldHook = getOldHook(fiber);
+  const oldHook = consumeOldHook();
 
   if (oldHook && !isEffectHook(oldHook)) {
     throw new Error("Hook order mismatch: expected an effect hook");
@@ -185,30 +217,31 @@ export function useEffect(effect: LiteEffectCallback, deps?: readonly unknown[])
     effect,
     cleanup: oldHook?.cleanup,
     shouldRun: !oldHook || !areHookInputsEqual(oldHook.deps, deps),
+    next: null,
   };
 
-  pushHook(fiber, hook);
+  appendHookNode(fiber, hook);
 }
 
 export function cleanupFiberEffects(fiber: LiteFiberNode | null) {
   visitFiberSubtree(fiber, (node) => {
-    for (const hook of node.hooks ?? []) {
+    visitHookList(node.memoizedState, (hook) => {
       if (!isEffectHook(hook) || typeof hook.cleanup !== "function") {
-        continue;
+        return;
       }
 
       hook.cleanup();
       hook.cleanup = undefined;
       hook.shouldRun = false;
-    }
+    });
   });
 }
 
 export function flushPassiveEffects(root: LiteFiberNode | null) {
   visitFiberSubtree(root, (fiber) => {
-    for (const hook of fiber.hooks ?? []) {
+    visitHookList(fiber.memoizedState, (hook) => {
       if (!isEffectHook(hook) || !hook.shouldRun) {
-        continue;
+        return;
       }
 
       if (typeof hook.cleanup === "function") {
@@ -219,6 +252,6 @@ export function flushPassiveEffects(root: LiteFiberNode | null) {
       hook.cleanup =
         typeof nextCleanup === "function" ? nextCleanup : undefined;
       hook.shouldRun = false;
-    }
+    });
   });
 }
