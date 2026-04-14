@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   createElement,
   type LiteFunctionComponent,
+  createLiteDevtoolsHook,
+  setLiteDevtoolsHookForTest,
   useEffect,
   useRef,
   useState,
@@ -29,6 +31,7 @@ function createDeadline(budget: number): LiteIdleDeadline {
 
 afterEach(() => {
   setScheduleIdleWorkForTest(null);
+  setLiteDevtoolsHookForTest(null);
 });
 
 describe("render", () => {
@@ -702,5 +705,29 @@ describe("render", () => {
     expect(effects).toEqual([
       "<section><h1>title</h1><p>body</p></section>",
     ]);
+  });
+
+  it("publishes a Fiber snapshot after commit when devtools are attached", () => {
+    const container = document.createElement("div");
+    const hook = createLiteDevtoolsHook();
+    const events: string[] = [];
+
+    hook.subscribe((event) => {
+      events.push(event.type);
+    });
+
+    setLiteDevtoolsHookForTest(hook);
+
+    render(
+      createElement(
+        "section",
+        null,
+        createElement("span", null, "devtools"),
+      ),
+      container,
+    );
+
+    expect(events).toContain("render:scheduled");
+    expect(events).toContain("render:commit");
   });
 });

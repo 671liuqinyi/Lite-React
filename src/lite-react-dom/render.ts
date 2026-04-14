@@ -5,6 +5,10 @@ import {
 } from "../lite-react";
 import { ROOT_ELEMENT, type LiteFiberNode } from "../lite-react/fiber";
 import {
+  publishLiteDevtoolsEvent,
+  serializeFiberTree,
+} from "../lite-react/devtools";
+import {
   cleanupFiberEffects,
   flushPassiveEffects,
   registerRootRender,
@@ -21,6 +25,7 @@ let workInProgressRoot: LiteFiberNode | null = null;
 let nextUnitOfWork: LiteFiberNode | null = null;
 let deletions: LiteFiberNode[] = [];
 let isWorkLoopScheduled = false;
+let currentRenderId = 0;
 
 function isEventProp(key: string) {
   return key.startsWith("on");
@@ -381,6 +386,8 @@ function commitWork(fiber: LiteFiberNode | null) {
 }
 
 function commitRoot() {
+  const committedRenderId = currentRenderId;
+
   for (const fiber of deletions) {
     commitWork(fiber);
   }
@@ -390,6 +397,14 @@ function commitRoot() {
   workInProgressRoot = null;
   nextUnitOfWork = null;
   deletions = [];
+
+  // devtools 只在 commit 完成后发布快照，避免看到半成品 Fiber 树。
+  publishLiteDevtoolsEvent({
+    type: "render:commit",
+    renderId: committedRenderId,
+    timestamp: Date.now(),
+    snapshot: serializeFiberTree(currentRoot),
+  });
 
   // useEffect 只在 commit 完成后执行，保证副作用读到的是新 DOM。
   flushPassiveEffects(currentRoot);
@@ -421,6 +436,13 @@ function ensureWorkLoopScheduled() {
 }
 
 export function render(vnode: LiteVNode, container: HTMLElement) {
+  currentRenderId += 1;
+  publishLiteDevtoolsEvent({
+    type: "render:scheduled",
+    renderId: currentRenderId,
+    timestamp: Date.now(),
+  });
+
   const alternateRoot =
     currentRoot && currentRoot.dom === container ? currentRoot : null;
 
