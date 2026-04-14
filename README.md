@@ -11,6 +11,10 @@
 - `requestIdleCallback` 时间切片
 - 可视化 Fiber 树 devtools
 
+## 项目展示
+
+在线展示地址：https://lite-react-drof2jdrb-671liuqinyis-projects.vercel.app/
+
 ## 项目目标
 
 这个仓库主要服务于两个目标：
