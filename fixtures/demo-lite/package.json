@@ -1,0 +1,16 @@
+{
+  "name": "demo-lite",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "lite-react": "workspace:*",
+    "lite-react-dom": "workspace:*",
+    "vite-plugin-lite-react-devtools": "workspace:*"
+  }
+}

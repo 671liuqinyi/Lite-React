@@ -7,7 +7,7 @@ import {
   useEffect,
   useRef,
   useState,
-} from "../../lite-react";
+} from "lite-react";
 import { render } from "../index";
 import {
   setScheduleIdleWorkForTest,

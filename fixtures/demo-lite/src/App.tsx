@@ -6,7 +6,7 @@ import {
   useEffect,
   useRef,
   useState,
-} from "../lite-react";
+} from "lite-react";
 
 // The classic JSX pragma consumes this binding during TSX compilation.
 void createElement;

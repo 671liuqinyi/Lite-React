@@ -3,7 +3,7 @@ import {
   ensureLiteDevtoolsHook,
   type LiteDevtoolsEvent,
   type LiteFiberSnapshot,
-} from "../lite-react/devtools";
+} from "lite-react/devtools";
 import { fiberSnapshotToMermaid } from "./graph";
 
 type DevtoolsPanel = {

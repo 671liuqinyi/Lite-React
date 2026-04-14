@@ -2,18 +2,18 @@ import {
   TEXT_ELEMENT,
   type LiteKey,
   type LiteVNode,
-} from "../lite-react";
-import { ROOT_ELEMENT, type LiteFiberNode } from "../lite-react/fiber";
+} from "lite-react";
+import { ROOT_ELEMENT, type LiteFiberNode } from "lite-react/fiber";
 import {
   publishLiteDevtoolsEvent,
   serializeFiberTree,
-} from "../lite-react/devtools";
+} from "lite-react/devtools";
 import {
   cleanupFiberEffects,
   flushPassiveEffects,
   registerRootRender,
   runFunctionComponent,
-} from "../lite-react/hooks";
+} from "lite-react/hooks";
 import {
   scheduleIdleWork,
   shouldYield,

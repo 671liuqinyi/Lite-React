@@ -1,4 +1,4 @@
-import type { LiteFiberSnapshot } from "../lite-react/devtools";
+import type { LiteFiberSnapshot } from "lite-react/devtools";
 
 function escapeMermaidLabel(value: string) {
   return value.replace(/"/g, "'").replace(/\n/g, "<br/>");

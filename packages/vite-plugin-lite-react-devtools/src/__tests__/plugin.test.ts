@@ -67,7 +67,7 @@ function runLoad(hook: LoadHook | undefined, id: string) {
 }
 
 describe("vite-plugin-lite-react-devtools", () => {
-  it("injects the client into lite.html only", async () => {
+  it("injects the client into the active fixture html", async () => {
     const plugin = liteReactDevtools();
     const htmlHook = plugin.transformIndexHtml as unknown as
       | (TransformIndexHtmlHook & {
@@ -81,23 +81,20 @@ describe("vite-plugin-lite-react-devtools", () => {
 
     const liteTags = await runTransformIndexHtml(
       htmlHook,
-      "/project/lite.html",
-    );
-    const mainTags = await runTransformIndexHtml(
-      htmlHook,
-      "/project/index.html",
+      "/project/fixtures/demo-lite/index.html",
     );
 
     expect(htmlHook.order).toBe("pre");
     expect(JSON.stringify(liteTags)).toContain(
-      "/src/vite-plugin-lite-react-devtools/entry.ts",
+      "/@fs/",
     );
-    expect(JSON.stringify(liteTags)).toContain("\"src\"");
+    expect(JSON.stringify(liteTags)).toContain(
+      "packages/vite-plugin-lite-react-devtools/src/entry.ts",
+    );
     expect(JSON.stringify(liteTags)).not.toContain(
       "virtual:lite-react-devtools/client",
     );
     expect(JSON.stringify(liteTags)).not.toContain("mountLiteReactDevtools");
-    expect(mainTags).toBeUndefined();
   });
 
   it("loads a bootstrap module for the virtual client id", async () => {
@@ -113,7 +110,10 @@ describe("vite-plugin-lite-react-devtools", () => {
 
     expect(typeof resolved).toBe("string");
     expect(String(loaded)).toContain(
-      'import "/src/vite-plugin-lite-react-devtools/entry.ts";',
+      'import "/@fs/',
+    );
+    expect(String(loaded)).toContain(
+      "packages/vite-plugin-lite-react-devtools/src/entry.ts",
     );
   });
 });

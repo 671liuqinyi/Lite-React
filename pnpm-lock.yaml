@@ -7,16 +7,6 @@ settings:
 importers:
 
   .:
-    dependencies:
-      mermaid:
-        specifier: ^11.14.0
-        version: 11.14.0
-      react:
-        specifier: ^19.2.4
-        version: 19.2.5
-      react-dom:
-        specifier: ^19.2.4
-        version: 19.2.5(react@19.2.5)
     devDependencies:
       '@eslint/js':
         specifier: ^9.39.4
@@ -60,6 +50,47 @@ importers:
       vitest:
         specifier: ^4.1.4
         version: 4.1.4(@types/node@24.12.2)(jsdom@26.1.0)(vite@8.0.8(@types/node@24.12.2)(esbuild@0.27.7))
+
+  fixtures/demo-lite:
+    dependencies:
+      lite-react:
+        specifier: workspace:*
+        version: link:../../packages/lite-react
+      lite-react-dom:
+        specifier: workspace:*
+        version: link:../../packages/lite-react-dom
+      vite-plugin-lite-react-devtools:
+        specifier: workspace:*
+        version: link:../../packages/vite-plugin-lite-react-devtools
+
+  fixtures/demo-react:
+    dependencies:
+      react:
+        specifier: ^19.2.4
+        version: 19.2.5
+      react-dom:
+        specifier: ^19.2.4
+        version: 19.2.5(react@19.2.5)
+
+  packages/lite-react: {}
+
+  packages/lite-react-dom:
+    dependencies:
+      lite-react:
+        specifier: workspace:*
+        version: link:../lite-react
+
+  packages/vite-plugin-lite-react-devtools:
+    dependencies:
+      lite-react:
+        specifier: workspace:*
+        version: link:../lite-react
+      mermaid:
+        specifier: ^11.14.0
+        version: 11.14.0
+      vite:
+        specifier: ^8.0.0
+        version: 8.0.8(@types/node@24.12.2)(esbuild@0.27.7)
 
 packages:
 

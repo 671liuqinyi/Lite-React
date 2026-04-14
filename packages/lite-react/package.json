@@ -1,0 +1,12 @@
+{
+  "name": "lite-react",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./fiber": "./src/fiber.ts",
+    "./hooks": "./src/hooks.ts",
+    "./devtools": "./src/devtools.ts"
+  }
+}

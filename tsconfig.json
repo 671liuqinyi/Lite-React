@@ -1,7 +1,10 @@
 {
   "files": [],
   "references": [
-    { "path": "./tsconfig.app.json" },
-    { "path": "./tsconfig.node.json" }
+    { "path": "./packages/lite-react" },
+    { "path": "./packages/lite-react-dom" },
+    { "path": "./packages/vite-plugin-lite-react-devtools" },
+    { "path": "./fixtures/demo-lite" },
+    { "path": "./fixtures/demo-react" }
   ]
 }

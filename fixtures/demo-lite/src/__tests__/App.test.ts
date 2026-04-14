@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createElement } from "../../lite-react";
-import { render } from "../../lite-react-dom";
+import { createElement } from "lite-react";
+import { render } from "lite-react-dom";
 import App from "../App.tsx";
 
 function getButton(container: HTMLElement, action: string) {

@@ -1,0 +1,13 @@
+{
+  "name": "lite-react-dom",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "dependencies": {
+    "lite-react": "workspace:*"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./scheduler": "./src/scheduler.ts"
+  }
+}
